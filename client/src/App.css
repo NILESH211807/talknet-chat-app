@@ -1,0 +1,89 @@
+body {
+   width: 100vw;
+   font-family: var(--font1);
+   background-color: var(--bg-secondary);
+}
+
+/* input :start  */
+.input_wrapper {
+   width: 100%;
+   background-color: var(--input-bg);
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+   border: 1.5px solid var(--border-primary);
+   border-radius: 0.3rem;
+   margin: 12px 0;
+}
+
+.input_wrapper input {
+   width: 100%;
+   padding: 0.6rem 1rem;
+   border: none;
+   outline: none;
+   font-size: 14px;
+   font-weight: 600;
+}
+
+.input_wrapper:focus-within {
+   border-color: var(--btn-primary);
+}
+
+
+.button {
+   width: 100%;
+   padding: 0.6rem 1rem;
+   border: none;
+   outline: none;
+   font-size: 14px;
+   font-weight: 500;
+   background-color: var(--btn-primary);
+   border-radius: 0.3rem;
+   cursor: pointer;
+   transition: .3s ease-in-out;
+   color: var(--text-third);
+}
+
+.button:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.button:hover {
+   background-color: var(--btn-secondary);
+}
+
+.error_message {
+   font-size: 14px;
+   font-weight: 500;
+   color: rgb(252, 31, 31);
+}
+
+.scrollbar::-webkit-scrollbar {
+   width: 0;
+}
+/* 
+.scrollbar::-webkit-scrollbar-thumb {
+   border-radius: 0.3rem;
+   background-color: var(--border-primary);
+} */
+
+@media (max-width:600px) {
+
+   .input_wrapper input {
+      padding: .8rem 1.3rem;
+      font-size: 16px;
+      font-weight: 600;
+   }
+
+   .button {
+      padding: .8rem 1.3rem;
+      font-size: 16px;
+      font-weight: 600;
+   }
+
+}
+
+
+
+/* input :end */

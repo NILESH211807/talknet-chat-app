@@ -91,7 +91,7 @@ module.exports.myChats = async (req, res) => {
         }
 
         const allChats = await chatModel.find({ members: req.user.id })
-            .populate('members', 'name profile').lean();
+            .populate('members', 'name profile').sort({ updatedAt: -1 }).lean();
 
         // console.log(allChats);
 
@@ -207,7 +207,7 @@ module.exports.getChatDetails = async (req, res) => {
             });
 
         } else {
-            const chat = await chatModel.findById(id).lean();
+            const chat = await chatModel.findById(id).select('-createdAt -updatedAt').lean();
 
             if (!chat) {
                 return res.status(404).json({

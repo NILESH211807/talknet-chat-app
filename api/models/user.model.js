@@ -42,8 +42,12 @@ const userSchema = new mongoose.Schema({
         default: true,
     },
     profile: {
-        type: String,
-        // default: "https://static.vecteezy.com/system/resources/previews/002/002/403/non_2x/man-with-beard-avatar-character-isolated-icon-free-vector.jpg",
+        image_url: {
+            type: String,
+        },
+        public_id: {
+            type: String,
+        }
     },
 }, { timestamps: true, versionKey: false });
 

@@ -3,11 +3,12 @@ import { createContext, useContext } from 'react'
 import { useAxios } from '../hook/useAxios';
 
 interface User {
+    _id: string;
     name: string;
     username: string;
     email: string;
     token: string;
-    profile: string;
+    profile: { image_url: string, public_id: string } | null;
 }
 
 interface AuthContextType {

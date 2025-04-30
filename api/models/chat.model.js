@@ -20,6 +20,14 @@ const chatSchema = new mongoose.Schema({
             ref: "User",
         },
     ],
+    profile: {
+        image_url: {
+            type: String,
+        },
+        public_id: {
+            type: String,
+        }
+    },
 }, { timestamps: true, versionKey: false });
 
 const Chat = mongoose.model("Chat", chatSchema);

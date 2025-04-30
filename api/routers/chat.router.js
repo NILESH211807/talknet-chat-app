@@ -10,5 +10,4 @@ router.route("/:id").get(chatController.getChatDetails); // populate=true to pop
 router.route("/:id").delete(chatController.deleteChat);
 router.route("/message/:chatId").get(chatController.getMessages);
 
-
 module.exports = router;

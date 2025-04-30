@@ -20,12 +20,20 @@ interface ChatItemProps {
     avatar?: string;
 }
 
+interface Props {
+    chat: {
+        isGroup: boolean;
+        members: string[];
+    };
+    user: string;
+}
+
 interface User {
     _id: string;
     name: string;
     username: string;
     email: string;
-    profile?: string;
+    profile?: { image_url: string, public_id: string };
 }
 
 const ChatList: React.FC = () => {
@@ -41,13 +49,10 @@ const ChatList: React.FC = () => {
             {/* Header */}
             <div className="py-3 px-2 flex items-center justify-between border-b border-[var(--border-primary)]">
                 <div className='flex items-center justify-center ml-2 rounded-full gap-2'>
-                    {
-                        user && user?.profile ? (
-                            <img src={user?.profile} alt={user?.name || user?.username} className='w-8 h-8 rounded-full' />
-                        ) : (
-                            <FaUser size={18} className='text-[var(--text-secondary)]' />
-                        )
-                    }
+                    {user && user?.profile ? (
+                        <img src={user?.profile?.image_url} alt={user?.name || user?.username} className='w-8 h-8 rounded-full' />
+                    ) : (
+                        <FaUser size={18} className='text-[var(--text-secondary)]' />)}
                     <h1 className='text-[var(--text-secondary)] mt-1 capitalize font-bold text-md ml-1'>{user?.name || user?.username}</h1>
                 </div>
                 <div className="flex items-center gap-4 relative">
@@ -79,7 +84,7 @@ const ChatList: React.FC = () => {
                             <p className='text-md mt-5'>No chats found. Start a new chat.</p>
                         </div>
                     ) : myAllChats.map((chat, index) => (
-                        <ChatItem key={index} chat={chat} user={user} />
+                        <ChatItem key={index} chat={chat as any} user={user as any} />
                     ))
                 }
             </div>

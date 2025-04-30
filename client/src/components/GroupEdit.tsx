@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { IoClose } from 'react-icons/io5';
 import { BiSearch } from 'react-icons/bi';
-import { FaCamera, FaUser } from 'react-icons/fa';
+import { FaUser, FaCamera } from 'react-icons/fa';
+import { MdDelete } from 'react-icons/md';
 import Button from './Button';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
@@ -11,35 +12,34 @@ import { handleResponse } from '../services/error';
 import toast from 'react-hot-toast';
 import Spinner from './Spinner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../context/Auth';
 
-interface CreateGroupProps {
-    isOpen: boolean;
-    onClose: () => void;
+interface GroupEditProps {
+    setIsGroupEditOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    groupData: {
+        _id: string;
+        name: string;
+        members: User[];
+        isGroup: boolean;
+        profile?: { image_url: string, public_id: string };
+    };
 }
 
 interface User {
     _id: string;
     name: string;
-    username: string,
-    profile: {
+    username: string;
+    profile?: {
         image_url: string;
         public_id: string;
     };
 }
 
-interface Group {
-    name: string;
-}
-
-interface CreateGroup {
-    name: string;
-}
-
-const createGroupSchema = yup.object().shape({
+const groupEditSchema = yup.object().shape({
     name: yup.string().required('Group name is required'),
 });
 
-const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
+const GroupEdit: React.FC<GroupEditProps> = ({ groupData, setIsGroupEditOpen }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -48,15 +48,23 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
     const queryClient = useQueryClient();
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const { user } = useAuth();
 
-    const { register, handleSubmit, setValue, formState: { errors } } = useForm({
-        resolver: yupResolver(createGroupSchema),
+    useEffect(() => {
+        const filteredUsers = groupData?.members.filter(u => u._id !== user?._id);
+        setSelectedUsers(filteredUsers);
+    }, []);
+
+    const { register, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(groupEditSchema),
+        defaultValues: {
+            name: groupData?.name || '',
+        },
     });
-
 
     const handleSelectUser = (user: User) => {
         setSelectedUsers(prev => ([...prev, user]));
-        setSearchQuery('');
+        handleClearSearch();
     };
 
     const handleRemoveUser = (userId: string) => {
@@ -66,35 +74,16 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
     const handleClearSearch = () => {
         setSearchQuery('');
         setSearchResults([]);
-        setSelectedUsers([]);
-        setValue('name', '');
     };
 
-
-    // handle search onchange
-    const handleSearchInput = (value: string) => {
-        const formattedValue = value
-            .replace(/[^a-zA-Z0-9@.\s]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        setSearchQuery(formattedValue);
-    };
-
-    useEffect(() => {
-        if (!searchQuery.trim()) {
+    const handleSearchInput = async (value: string) => {
+        setSearchQuery(value);
+        if (value.length >= 1) {
+            await fetchSearchResults(value);
+        } else {
             setSearchResults([]);
-            return;
         }
-
-        const timeoutId = setTimeout(() => {
-            fetchSearchResults(searchQuery);
-        }, 500);
-
-        return () => {
-            clearTimeout(timeoutId);
-        }
-    }, [searchQuery])
+    };
 
     const fetchSearchResults = async (value: string) => {
         setIsLoading(true);
@@ -106,17 +95,15 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
             });
 
             const { success, message } = handleResponse(response);
-
             if (!success) toast.error(message);
 
-            // filter selected users from search results
+            // Filter out already selected users
             response.data = response.data.filter((user: User) =>
                 !selectedUsers.find(selected => selected._id === user._id));
 
             if (response.data.length <= 0) toast.error('No users found');
             setSearchResults(response?.data);
         } catch (error: any) {
-            console.error('Error fetching search results:', error);
             const { message } = handleResponse(error);
             toast.error(message || 'Failed to fetch search results');
             setSearchResults([]);
@@ -127,6 +114,7 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+
         if (file) {
             setSelectedFile(file);
             const reader = new FileReader();
@@ -137,7 +125,7 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    const handleCreateGroup = async (data: Group) => {
+    const handleUpdateGroup = async (data: any) => {
         if (!data) return;
         if (selectedUsers.length <= 0) return;
 
@@ -147,18 +135,17 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
         }
         // filter only id from members 
         const membersList = selectedUsers?.map(user => user._id);
-
+        formData.append('chatId', groupData._id);
         formData.append('name', data.name);
         formData.append('members', JSON.stringify(membersList));
         mutation.mutate(formData);
     };
 
-
     const mutation = useMutation({
-        mutationKey: ["CREATE_GROUP"],
+        mutationKey: ["UPDATE_GROUP"],
         mutationFn: async (data: FormData) => await fetchData({
-            method: 'POST',
-            url: '/api/group/create',
+            method: 'PUT',
+            url: '/api/group/update-group',
             data,
             headers: {
                 'Content-Type': 'multipart/form-data'
@@ -166,11 +153,11 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
         }),
         onSuccess: (data) => {
             const { success, message } = handleResponse(data);
-            if (success && message == "Group created successfully") {
+            if (success) {
                 queryClient.invalidateQueries({ queryKey: ["MY_CHATS"] });
                 toast.success(message);
                 handleClearSearch();
-                onClose();
+                setIsGroupEditOpen(false);
             } else {
                 toast.error(message);
             }
@@ -179,52 +166,51 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
             const { message } = handleResponse(error);
             toast.error(message);
         }
-    })
+    });
+
 
     return (
         <>
-            <div className={`fixed top-0 right-0 w-full h-screen bg-[#00000067] backdrop:blur-2xl ${isOpen ? 'block' : 'hidden'} z-40`} onClick={onClose}></div>
-            <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-md bg-[var(--bg-primary)] shadow-lg rounded-lg transform transition-transform duration-300 ease-in-out ${isOpen ? 'scale-100' : 'scale-0'} z-50`}>
-                {/* Header */}
+            <div className={`fixed top-0 right-0 w-full h-screen bg-[#00000067] backdrop:blur-2xl`}></div>
+            <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-md bg-[var(--bg-primary)] shadow-lg rounded-lg transform transition-transform duration-300 ease-in-out z-50`}>
                 <div className="p-4 border-b border-[var(--border-primary)] flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-[var(--text-primary)]">Create New Group</h2>
+                    <h2 className="text-xl font-bold text-[var(--text-primary)]">Edit Group</h2>
                     <button
-                        onClick={onClose}
+                        onClick={() => setIsGroupEditOpen(false)}
                         className="p-2 cursor-pointer hover:bg-[var(--bg-secondary)] rounded-full">
                         <IoClose className="text-[var(--text-secondary)] text-2xl" />
                     </button>
                 </div>
 
-                <form className="p-4" onSubmit={handleSubmit(handleCreateGroup)}>
+                <form className="p-4" onSubmit={handleSubmit(handleUpdateGroup)}>
                     <div className="flex justify-center mb-4">
                         <div className="relative">
-                            <div className="w-20 h-20 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center overflow-hidden">
-                                {selectedImage ? (
-                                    <img
-                                        src={selectedImage}
-                                        alt="Group"
-                                        className="w-full h-full object-cover"
-                                    />
+                            <div className="w-24 h-24 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center overflow-hidden">
+                                {selectedImage || groupData?.profile && groupData?.profile?.image_url ? (
+                                    <img src={selectedImage || groupData?.profile?.image_url} alt="Group" className="w-full h-full object-cover" />
                                 ) : (
                                     <span className="text-4xl text-[var(--text-secondary)]">G</span>
                                 )}
                             </div>
-                            <label htmlFor="upload_profile_image" className="absolute bottom-0 right-0 cursor-pointer">
+                            <button type='button' className="absolute bottom-0 right-0 p-2 bg-[var(--bg-primary)] rounded-full border border-[var(--border-primary)]">
+                                <FaCamera className="text-[var(--text-secondary)]" />
+                            </button>
+
+                            <label htmlFor="upload_profile_image2" className="absolute bottom-0 right-0 cursor-pointer">
                                 <div className="p-2 bg-[var(--bg-primary)] rounded-full border border-[var(--border-primary)]">
                                     <FaCamera className="text-[var(--text-secondary)]" />
                                 </div>
                                 <input
                                     type="file"
-                                    id="upload_profile_image"
+                                    id="upload_profile_image2"
                                     accept="image/*"
                                     className="hidden"
                                     onChange={handleImageChange}
                                 />
                             </label>
+
                         </div>
                     </div>
-
-
 
                     <div className="input_wrapper">
                         <input
@@ -233,14 +219,10 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
                             {...register('name')} />
                     </div>
                     {errors.name && (
-                        <p className="error_message -mt-2">{errors.name.message}</p>)}
+                        <p className="error_message -mt-2">{errors.name.message}</p>
+                    )}
 
-                    {/* Search Users */}
-                    <p className="text-xs text-[var(--text-primary)]">
-                        Enter a name, email, or username to search. Click 'Search' to proceed.
-                    </p>
-
-                    <div className="input_wrapper">
+                    <div className="input_wrapper mt-4">
                         <div className="flex items-center">
                             <BiSearch className="text-[var(--text-secondary)] text-xl ml-2" />
                             <input
@@ -256,6 +238,7 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
                             )}
                             {!isLoading && searchQuery && (
                                 <button
+                                    type="button"
                                     onClick={handleClearSearch}
                                     className="p-1 absolute right-7 cursor-pointer rounded-full">
                                     <IoClose className="text-xl transition-colors text-red-300" />
@@ -264,67 +247,79 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* Selected Users */}
-                    {selectedUsers.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-scroll">
+                    {/* Members List */}
+                    <div className="mt-4">
+                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Members</h3>
+                        <div className="max-h-[150px] overflow-y-auto">
                             {selectedUsers.map(user => (
                                 <div
                                     key={user._id}
-                                    className="flex items-center gap-2 bg-[var(--bg-secondary)] px-2 py-1 rounded-md border border-[var(--border-primary)]">
-                                    {user?.profile && user?.profile?.image_url ? (
-                                        <img
-                                            src={user?.profile?.image_url}
-                                            alt={user.name}
-                                            className="w-7 h-7 rounded-full"
-                                        />
-                                    ) : (
-                                        <div className="border border-[var(--border-primary)] p-2 flex items-center justify-center rounded-full overflow-hidden">
-                                            <FaUser size={14} className="text-[var(--text-secondary)]" />
+                                    className="flex items-center justify-between p-2 hover:bg-[var(--bg-secondary)] rounded-md">
+                                    <div className="flex items-center gap-2">
+                                        {user?.profile?.image_url ? (
+                                            <img
+                                                src={user?.profile?.image_url}
+                                                alt={user.name}
+                                                className="w-8 h-8 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center">
+                                                <FaUser className="text-[var(--text-secondary)]" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-semibold text-[var(--text-secondary)]">{user.name}</p>
                                         </div>
-                                    )}
-                                    <span className="text-xs font-semibold text-[var(--text-secondary)]">{user.name}</span>
+                                    </div>
                                     <button
+                                        type="button"
                                         onClick={() => handleRemoveUser(user._id)}
-                                        className="text-[var(--text-secondary)] mr-1 hover:text-red-500 cursor-pointer">
-                                        <IoClose size={18} />
+                                        className="p-1 hover:bg-red-100 rounded-full">
+                                        <MdDelete className="text-red-500 cursor-pointer" />
                                     </button>
                                 </div>
                             ))}
                         </div>
-                    )}
+                    </div>
 
-                    {/* User List */}
+                    {/* Search Results */}
                     {searchResults.length > 0 && (
-                        <div className="max-h-[150px] overflow-y-auto border border-[var(--border-primary)] rounded-sm shadow-sm mt-2">
-                            {searchResults.map(user => (
-                                <div
-                                    key={user._id}
-                                    className="flex items-center border-b border-b-[var(--border-primary)] gap-3 p-2 hover:bg-[var(--bg-secondary)] cursor-pointer"
-                                    onClick={() => handleSelectUser(user)}>
-                                    {user?.profile && user?.profile?.image_url ? (
-                                        <img
-                                            src={user?.profile?.image_url}
-                                            alt={user.name}
-                                            className="w-8 h-8 rounded-full" />
-                                    ) : (
-                                        <div className="border border-[var(--border-primary)] p-2 flex items-center justify-center rounded-full overflow-hidden">
-                                            <FaUser size={20} className="text-[var(--text-secondary)]" />
+                        <div className="mt-4 border border-[var(--border-primary)] rounded-md">
+                            <h3 className="text-sm font-semibold text-[var(--text-secondary)] p-2 border-b border-[var(--border-primary)]">
+                                Search Results
+                            </h3>
+                            <div className="max-h-[150px] overflow-y-auto">
+                                {searchResults.map(user => (
+                                    <div
+                                        key={user._id}
+                                        className="flex items-center gap-2 p-2 hover:bg-[var(--bg-secondary)] cursor-pointer"
+                                        onClick={() => handleSelectUser(user)}>
+                                        {user?.profile?.image_url ? (
+                                            <img
+                                                src={user.profile.image_url}
+                                                alt={user.name}
+                                                className="w-8 h-8 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center">
+                                                <FaUser className="text-[var(--text-secondary)]" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-semibold text-[var(--text-secondary)]">{user.name}</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">@{user.username}</p>
                                         </div>
-                                    )}
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-semibold text-[var(--text-secondary)]">{user.name}</span>
-                                        <span className="text-sm text-[var(--text-secondary)]">{user.username}</span>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
 
                     <Button
-                        disabled={selectedUsers.length <= 0}
+                        disabled={selectedUsers.length < 2}
                         isLoading={mutation.isPending}
-                        className="mt-4">
-                        Create Group
+                        className="mt-4 w-full">
+                        Update Group
                     </Button>
                 </form>
             </div>
@@ -332,4 +327,4 @@ const CreateGroup: React.FC<CreateGroupProps> = ({ isOpen, onClose }) => {
     );
 };
 
-export default CreateGroup
+export default GroupEdit

@@ -11,6 +11,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import Spinner from './Spinner';
 
 interface ProfileProps {
     isOpen: boolean;
@@ -65,6 +66,7 @@ const Profile: React.FC<ProfileProps> = ({ isOpen, onClose }) => {
     const queryClient = useQueryClient();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const {
         register: registerProfile,
@@ -186,9 +188,10 @@ const Profile: React.FC<ProfileProps> = ({ isOpen, onClose }) => {
     /// upload image to server using axios and FormData
     const fetchImageData = async (file: File) => {
         if (!file) return;
+        setIsLoading(true);
         try {
             const formData = new FormData();
-            formData.append('profile', file);
+            formData.append('profile_image', file);
 
             const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/user/upload-profile`, formData, {
                 headers: {
@@ -204,13 +207,15 @@ const Profile: React.FC<ProfileProps> = ({ isOpen, onClose }) => {
                 toast.success(response.data.message);
                 setPreviewImage(null);
                 setSelectedFile(null);
-                handleClosePage();
+                // handleClosePage();
             }
 
         } catch (error: any) {
             console.log(error);
             const { message } = handleResponse(error);
             toast.error(message || 'Failed to upload image');
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -254,10 +259,10 @@ const Profile: React.FC<ProfileProps> = ({ isOpen, onClose }) => {
                                     {
                                         previewImage || user?.profile ? (
                                             <div className="w-24 h-24 rounded-full overflow-hidden">
-                                                <img src={user?.profile} alt="Profile" className="w-full h-full object-cover" />
+                                                <img src={previewImage || user?.profile?.image_url} alt="Profile" className="w-full h-full object-cover" />
                                             </div>
 
-                                        ) : <div className="w-20 h-20 flex items-center justify-center rounded-full overflow-hidden">
+                                        ) : <div className="w-20 h-20 flex border border-[var(--border-primary)] items-center justify-center rounded-full overflow-hidden">
                                             <FaUser size={40} className="text-[var(--text-secondary)]" />
                                         </div>
                                     }
@@ -286,10 +291,11 @@ const Profile: React.FC<ProfileProps> = ({ isOpen, onClose }) => {
                                             Remove
                                         </button>
                                         <button
+                                            disabled={!selectedFile || isLoading}
                                             type="button"
                                             onClick={() => fetchImageData(selectedFile!)}
                                             className="px-3 py-1.5 cursor-pointer text-sm font-medium text-white bg-[var(--btn-primary)] rounded-md hover:bg-[var(--btn-secondary)]">
-                                            Upload Image
+                                            {isLoading ? <span className="ml-2">Uploading...</span> : 'Upload'}
                                         </button>
                                     </div>
                                 )

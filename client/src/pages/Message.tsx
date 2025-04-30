@@ -1,9 +1,7 @@
-import React, { useState, useRef, useEffect, Ref } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { FaPaperclip, FaPaperPlane, FaImage, FaVideo, FaFile, FaMicrophone, FaFilePdf, FaFileWord, FaFileAlt, FaFileExcel, FaFilePowerpoint } from 'react-icons/fa'
 import { BsThreeDotsVertical } from 'react-icons/bs'
 import { IoArrowBack } from 'react-icons/io5'
-import { BiSearch, BiBlock } from 'react-icons/bi';
-import { MdDelete } from 'react-icons/md';
 import ChatList from '../components/ChatList'
 import { useNavigate, useParams } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
@@ -13,6 +11,7 @@ import Document from '../components/message-types/Document';
 import Image from '../components/message-types/Image';
 import { useQuery } from '@tanstack/react-query';
 import { useAxios } from '../hook/useAxios';
+import GroupEdit from '../components/GroupEdit';
 
 interface Message {
     id: number;
@@ -26,27 +25,6 @@ interface Message {
     type: 'text' | 'image' | 'video' | 'audio' | 'document';
 }
 
-
-// {
-//     "success": true,
-//     "data": {
-//         "_id": "680e4fe747d99fd48bbf1d84",
-//         "name": "Rodolfo Purdy",
-//         "isGroup": false,
-//         "members": [
-//             {
-//                 "_id": "680e05721a62b63153282f63",
-//                 "name": "Rodolfo Purdy"
-//             },
-//             {
-//                 "_id": "680de2689ed0ffc885ad157d",
-//                 "name": "NILESH KUMAR"
-//             }
-//         ],
-//         "createdAt": "2025-04-27T15:40:23.994Z",
-//         "updatedAt": "2025-04-27T15:40:23.994Z"
-//     }
-// }
 
 const getFileIcon = (fileName: string | undefined) => {
     if (!fileName) return FaFileAlt;
@@ -102,9 +80,9 @@ const Messages: React.FC = () => {
     const attachButtonRef = useRef<HTMLButtonElement>(null);
     const { id } = useParams();
     const { fetchData } = useAxios();
-
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+    const [isGroupEditOpen, setIsGroupEditOpen] = useState(false);
 
     const { data, isPending, error } = useQuery({
         queryKey: ['CHAT_ID', id],
@@ -314,11 +292,17 @@ const Messages: React.FC = () => {
 
                         <div className='relative'>
                             <div className='w-10 h-10 rounded-full overflow-hidden'>
-                                <img
-                                    src="https://i.pravatar.cc/150?img=1"
-                                    alt="Profile"
-                                    className='w-full h-full object-cover'
-                                />
+                                {data?.data?.profile && data?.data?.profile?.image_url ? (
+                                    <img
+                                        src={data.data.profile.image_url}
+                                        alt="Profile"
+                                        className='w-full h-full object-cover'
+                                    />
+                                ) : (
+                                    <div className='w-full h-full bg-[var(--bg-secondary)] flex items-center justify-center'>
+                                        <span className='text-[var(--text-secondary)] font-semibold text-xl'>{data?.data?.name?.charAt(0)}</span>
+                                    </div>
+                                )}
                             </div>
                             <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div>
                         </div>
@@ -332,19 +316,23 @@ const Messages: React.FC = () => {
                         <button
                             ref={chatMenuButtonRef}
                             onClick={() => setShowChatMenu(!showChatMenu)}
-                            className='p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors'>
+                            className='p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors cursor-pointer'>
                             <BsThreeDotsVertical className='text-[var(--text-secondary)]' />
                         </button>
 
                         {/* Chat Menu */}
                         {showChatMenu && (
                             <UserMenu
+                                data={data?.data}
                                 chatMenuButtonRef={chatMenuButtonRef as React.RefObject<HTMLButtonElement>}
                                 setShowChatMenu={setShowChatMenu}
+                                setIsGroupEditOpen={setIsGroupEditOpen}
                             />
                         )}
                     </div>
                 </div>
+
+                {isGroupEditOpen && <GroupEdit groupData={data?.data} setIsGroupEditOpen={setIsGroupEditOpen} />}
 
                 {/* Messages Container */}
                 <div className='flex-1 overflow-y-auto p-4 space-y-4'>

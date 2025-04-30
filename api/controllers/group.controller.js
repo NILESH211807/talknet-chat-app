@@ -1,29 +1,54 @@
 const chatModel = require('../models/chat.model');
 const userModel = require('../models/user.model');
+const { uploadImage, deleteFilesFromCloudinary } = require('../utils/cloudinary');
+const { IdIsValid } = require('../utils/utility');
 
 function formatName(name) {
     return name.replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '').replace(/\b\w/g, (char) => char.toLocaleUpperCase());
 }
 // Create Group
 module.exports.createGroup = async (req, res) => {
-    const { name, members } = req.body;
-
     try {
+        const req_data = req.body;
 
-        if (!name || !members) {
+        // Check required fields first
+        if (!req_data.name || !req_data.members) {
             return res.status(400).json({
                 success: false, message: 'Name and members are required'
             });
         }
 
-        if (members.length < 2) {
+        const name = formatName(req_data.name);
+
+        // Parse members with proper error handling
+        let members;
+        try {
+            members = typeof req_data.members === 'string'
+                ? JSON.parse(req_data.members)
+                : req_data.members;
+        } catch (error) {
             return res.status(400).json({
-                success: false, message: 'At least two members are required'
+                success: false, message: 'Members must be valid JSON'
             });
         }
 
-        const allMembers = [...members, req.user.id];
+        // Validate members is an array with content
+        if (!Array.isArray(members)) {
+            return res.status(400).json({
+                success: false, message: 'Members must be an array'
+            });
+        }
 
+        if (members.length < 1) {
+            return res.status(400).json({
+                success: false, message: 'At least one member is required'
+            });
+        }
+
+        // Create unique members list including creator
+        const allMembers = [...new Set([...members, req.user.id])];
+
+        // Create group
         const newGroup = new chatModel({
             name,
             isGroup: true,
@@ -31,16 +56,39 @@ module.exports.createGroup = async (req, res) => {
             members: allMembers
         });
 
+        // Handle profile image if provided
+        if (req.file) {
+            try {
+                const uploadResult = await uploadImage(req.file.path);
+
+                if (!uploadResult) {
+                    return res.status(500).json({
+                        success: false, message: 'Failed to upload image'
+                    });
+                }
+
+                newGroup.profile = {
+                    image_url: uploadResult.secure_url,
+                    public_id: uploadResult.public_id
+                };
+            } catch (imageError) {
+                return res.status(500).json({
+                    success: false, message: 'Error uploading profile image'
+                });
+            }
+        }
+
         await newGroup.save();
 
-        res.status(200).json({
+        res.status(201).json({
             success: true,
             message: 'Group created successfully',
             data: {
                 name: newGroup.name,
                 isGroup: newGroup.isGroup,
                 creator: newGroup.creator,
-                members: newGroup.members
+                members: newGroup.members,
+                profile: newGroup.profile
             }
         });
 
@@ -51,24 +99,61 @@ module.exports.createGroup = async (req, res) => {
     }
 };
 
-// add members 
+// update group 
 module.exports.updateGroup = async (req, res) => {
-    const { chatId, name, members } = req.body;
+
+    const req_data = req.body;
 
     try {
-        if (!chatId) {
+
+        if (!req_data.chatId) {
             return res.status(400).json({
                 success: false, message: 'Chat ID is required'
             });
         }
 
-        if (!name && !members) {
+        if (!IdIsValid(req_data.chatId)) {
             return res.status(400).json({
-                success: false, message: 'Name or members is required'
+                success: false, message: 'Invalid chatId'
             });
         }
 
-        const chat = await chatModel.findById(chatId);
+        // Check required fields first
+        if (!req_data.members) {
+            return res.status(400).json({
+                success: false, message: 'Members are required'
+            });
+        }
+
+        // Parse members with proper error handling
+        let members;
+        try {
+            members = typeof req_data.members === 'string'
+                ? JSON.parse(req_data.members)
+                : req_data.members;
+        } catch (error) {
+            return res.status(400).json({
+                success: false, message: 'Members must be valid JSON'
+            });
+        }
+
+        // Validate members is an array with content
+        if (!Array.isArray(members)) {
+            return res.status(400).json({
+                success: false, message: 'Members must be an array'
+            });
+        }
+
+        if (members.length < 1) {
+            return res.status(400).json({
+                success: false, message: 'At least one member is required'
+            });
+        }
+
+        // Create unique members list including creator
+        const allMembers = [...new Set([...members, req.user.id])];
+
+        const chat = await chatModel.findById(req_data.chatId).select('-createdAt -updatedAt');
 
         if (!chat) {
             return res.status(404).json({
@@ -82,48 +167,50 @@ module.exports.updateGroup = async (req, res) => {
             });
         }
 
-        if (chat.creator.toString() !== req.user.id) {
+        if (chat.creator.toString() !== req.user.id.toString()) {
             return res.status(401).json({
                 success: false, message: 'You are not allowed to add members in this group'
             });
         }
 
-        // update group name 
-        if (name) {
-            const formattedName = formatName(name);
-            chat.name = formattedName;
+        if (req_data.name) {
+            const name = formatName(req_data.name);
+            chat.name = name;
         }
 
-        // update group members 
-        if (members) {
-            if (!Array.isArray(members)) {
-                return res.status(400).json({
-                    success: false, message: 'Members must be an array'
+        // Handle profile image if provided
+        if (req.file) {
+            try {
+
+                if (chat.profile?.public_id) {
+                    await deleteFilesFromCloudinary(chat.profile.public_id);
+                }
+                const uploadResult = await uploadImage(req.file.path);
+
+                if (!uploadResult) {
+                    return res.status(500).json({
+                        success: false, message: 'Failed to upload image'
+                    });
+                }
+
+                chat.profile = {
+                    image_url: uploadResult.secure_url,
+                    public_id: uploadResult.public_id
+                };
+            } catch (imageError) {
+                return res.status(500).json({
+                    success: false, message: 'Error uploading profile image'
                 });
             }
-            if (members.length < 2) {
-                return res.status(400).json({
-                    success: false, message: 'At least two members are required'
-                });
-            }
-
-            const allNewMembersPromise = members.map((m) => userModel.findById(m));
-            const allNewMembers = await Promise.all(allNewMembersPromise);
-
-            chat.members = allNewMembers.map((m) => m._id);
-            chat.members.push(req.user.id);
         }
 
+        chat.members = allMembers;
         await chat.save();
-
-        // Fetch updated chat with populated members
-        const updatedChat = await chatModel.findById(chatId)
-            .populate('members', 'name email profile')
-            .populate('creator', 'name email profile');
 
         res.status(200).json({
             success: true,
             message: 'Group updated successfully',
+            data: chat,
         });
 
     } catch (error) {
@@ -158,7 +245,7 @@ module.exports.deleteGroup = async (req, res) => {
             });
         }
 
-        if (chat.creator.toString() !== req.user.id) {
+        if (chat.creator.toString() !== req.user.id.toString()) {
             return res.status(401).json({
                 success: false, message: 'You are not allowed to delete this group'
             });
@@ -210,7 +297,7 @@ module.exports.leaveGroup = async (req, res) => {
         }
 
         chat.members = chat.members.filter((m) => m.toString() !== req.user.id);
-        
+
         await chat.save();
 
         res.status(200).json({

@@ -9,17 +9,19 @@ interface AxiosOptions<T = unknown> {
     url: string;
     data?: T;
     params?: Record<string, any>;
+    headers?: Record<string, any>;
 }
 
 export const useAxios = <Response = any, Request = any>() => {
     const navigate = useNavigate();
-    const fetchData = async ({ method, url, data, params }: AxiosOptions<Request>) => {
+    const fetchData = async ({ method, url, data, params, headers }: AxiosOptions<Request>) => {
         try {
             const res = await axiosInstance.request<Response>({
                 method,
                 url,
                 data,
                 params,
+                headers,
             });
             return res.data;
         } catch (err: any) {

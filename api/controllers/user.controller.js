@@ -4,6 +4,7 @@ const chatModel = require('../models/chat.model');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
+const { uploadImage, deleteFilesFromCloudinary } = require('../utils/cloudinary');
 
 
 function formatName(name) {
@@ -160,62 +161,42 @@ module.exports.uploadProfileImage = async (req, res) => {
          });
       }
 
-      const inputPath = req.file.path;
-      // Create a unique filename with timestamp to avoid conflicts
-      const outputFilename = `profile-${Date.now()}-${req.user.id}.webp`;
-      const outputPath = path.join(__dirname, '..', 'uploads', 'profiles', outputFilename);
+      try {
 
-      // Process image with sharp
-      await sharp(inputPath)
-         .resize({ width: 500, height: 500, withoutEnlargement: true })
-         .webp({ quality: 60 })
-         .toFile(outputPath);
-
-      // Store the old profile path before updating
-      const oldProfilePath = user.profile;
-
-      // Update user profile path
-      const profilePath = `/uploads/profiles/${outputFilename}`;
-      user.profile = profilePath;
-      await user.save();
-
-      // Generate full URL for client
-      // const fileUrl = `${req.protocol}://${req.get('host')}${profilePath}`;
-
-      // Send success response without waiting for cleanup
-      res.status(200).json({
-         success: true,
-         message: 'Profile image updated successfully',
-         // profileImage: fileUrl,
-      });
-
-      // Attempt cleanup after response is sent with longer timeout
-      setTimeout(async () => {
-         try {
-            // Clean up original uploaded file
-            if (fs.existsSync(inputPath)) {
-               try {
-                  fs.unlinkSync(inputPath);
-               } catch (err) {
-                  console.log("Could not delete original upload:", err.code);
-               }
-            }
-
-            // Clean up previous profile image if it exists
-            if (oldProfilePath) {
-               const oldImagePath = path.join(__dirname, '..', oldProfilePath.replace(/^\//, ''));
-               if (fs.existsSync(oldImagePath)) {
-                  try {
-                     fs.unlinkSync(oldImagePath);
-                  } catch (err) {
-                     console.log("Could not delete old profile:", err.code);
-                  }
-               }
-            }
-         } catch (err) {
-            console.log("File cleanup background task error:", err);
+         // if profile image is already uploaded, delete it
+         if (user?.profile?.public_id) {
+            await deleteFilesFromCloudinary(user.profile.public_id);
+            user.profile = null;
          }
-      }, 2000); // Longer timeout of 2 seconds
+
+         const uploadResult = await uploadImage(req.file.path);
+
+         if (!uploadResult) {
+            return res.status(500).json({
+               success: false, message: 'Failed to upload image'
+            });
+         }
+
+         user.profile = {
+            image_url: uploadResult.secure_url,
+            public_id: uploadResult.public_id
+         };
+
+         await user.save();
+
+         res.status(200).json({
+            success: true,
+            message: 'Profile image updated successfully',
+            profileImage: user.profile.image_url
+         });
+
+      } catch (err) {
+         console.error('Upload error:', err);
+         res.status(500).json({
+            success: false,
+            message: err.message || 'Internal server error'
+         });
+      }
 
    } catch (error) {
       console.error('Upload error:', error);
@@ -369,7 +350,6 @@ module.exports.acceptFriendRequest = async (req, res) => {
    }
 }
 
-
 // notifications
 module.exports.getAllNotifications = async (req, res) => {
    try {
@@ -388,7 +368,6 @@ module.exports.getAllNotifications = async (req, res) => {
       });
    }
 }
-
 
 // search user
 module.exports.searchUser = async (req, res) => {

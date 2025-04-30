@@ -5,7 +5,6 @@
 :root {
     --font1: "Libre Franklin", sans-serif;
     --font2: "Open Sans", sans-serif;
-
     /* Light theme */
     --bg-primary: #ffffff;
     --bg-secondary: #f3f4f6;
@@ -16,7 +15,7 @@
     --text-third: #ffffff;
     --border-primary: #e5e7eb;
     --input-bg: #f8f8f8;
-
+    --red-color: #ee2b2b;
 }
 
 /* dark theme */
@@ -30,4 +29,5 @@
     --text-third: #000000;
     --border-primary: #4b5563;
     --input-bg: #1f2937;
+    --red-color: #ee2b2b;
 }

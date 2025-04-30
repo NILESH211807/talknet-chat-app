@@ -1,4 +1,4 @@
-const dotenv = require("dotenv");
+require("dotenv").config();
 const express = require('express');
 const cookieParser = require("cookie-parser");
 const path = require('path');
@@ -19,17 +19,16 @@ const { createSingleChats, createGroupChats, createMessageInChat } = require("./
 const { createServer } = require("http");
 const { NEW_MESSAGE, NEW_MESSAGE_ALERT } = require("./constants/events");
 const { getSockets, userSocketIds } = require("./lib/socketStore");
-const { createUserSignup } = require("./seeders/user");
+// const { createUserSignup } = require("./seeders/user");
 // const userSocketIds = new Map();
 // const { getSockets } = require("./lib/helper");
 
-dotenv.config();
+// dotenv.config();
 connectDb();
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server);
-
 
 // createSingleChats(10);
 // createGroupChats(10);

@@ -133,7 +133,7 @@ const SearchUser = () => {
     })
 
     return (
-        <div className="py-2 px-4 mt-3 relative">
+        <div className="py-2 px-2 mt-3 relative">
             <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] flex items-center gap-2 px-3 py-2 rounded-full focus-within:border-[var(--btn-primary)]">
                 <BiSearch className="text-[var(--text-secondary)] text-2xl" />
                 <input

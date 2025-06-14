@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import { BiSearch } from 'react-icons/bi';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { FaUser } from 'react-icons/fa';
 import ChatItem from './ChatItem';
@@ -9,32 +8,6 @@ import Menu from './Menu';
 import { useAuth } from '../context/Auth';
 import { useChat } from '../context/Chats';
 import SearchUser from './SearchUser';
-
-interface ChatItemProps {
-    chatId: string;
-    name: string;
-    isGroup: boolean;
-    members: User[];
-    createdAt?: string;
-    updatedAt?: string;
-    avatar?: string;
-}
-
-interface Props {
-    chat: {
-        isGroup: boolean;
-        members: string[];
-    };
-    user: string;
-}
-
-interface User {
-    _id: string;
-    name: string;
-    username: string;
-    email: string;
-    profile?: { image_url: string, public_id: string };
-}
 
 const ChatList: React.FC = () => {
     const [showMenu, setShowMenu] = useState(false);

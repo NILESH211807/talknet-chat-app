@@ -34,7 +34,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             url: '/api/chat/my-chats'
         }),
         staleTime: 1000 * 60 * 5, // 5 minutes
-    })
+        refetchOnWindowFocus: false,
+        retry: false,
+    });
 
     const values = {
         myAllChats: chats?.data || [],
@@ -50,9 +52,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useChat = (): ChatContextType => {
     const context = useContext(ChatContext);
-    if (!context) {
-        throw new Error('useChat must be used within a ChatProvider');
-    }
     return context;
 }
 

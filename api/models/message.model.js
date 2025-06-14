@@ -12,12 +12,21 @@ const messageSchema = new mongoose.Schema({
         required: [true, "Chat is required"]
     },
     content: {
-        type: String, trim: true,
+        type: String,
+        trim: true,
     },
     attachments: [
         {
-            url: String,
-            type: { type: String, enum: ['image', 'video', 'audio', 'document'], }
+            url: {
+                type: String,
+            },
+            public_id: {
+                type: String,
+            },
+            type: {
+                type: String,
+                default: 'image',
+            },
         }
     ],
 }, { timestamps: true, versionKey: false });

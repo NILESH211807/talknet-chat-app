@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext } from 'react'
 import { useAxios } from '../hook/useAxios';
 
-interface User {
+export interface User {
     _id: string;
     name: string;
     username: string;
@@ -21,17 +21,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { fetchData } = useAxios();
 
-
-    const { data, isPending, error, isError } = useQuery({
+    const { data, isPending } = useQuery({
         queryKey: ['USER'],
         queryFn: async () => await fetchData({
             method: 'GET',
             url: '/api/user/profile'
         }),
-        retry: 2,
-        retryDelay: 1000,
         refetchOnWindowFocus: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
+        retry: false,
     })
 
     const values = {

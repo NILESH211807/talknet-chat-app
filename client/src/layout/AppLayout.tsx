@@ -13,9 +13,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
    return (
       <main>
+         {/* <SocketProvider> */}
          <ChatProvider>
             {children}
          </ChatProvider>
+         {/* </SocketProvider> */}
       </main>
    )
 }

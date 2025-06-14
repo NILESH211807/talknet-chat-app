@@ -29,7 +29,6 @@ export const useAxios = <Response = any, Request = any>() => {
             if (message == "Unauthorized. Please login.") {
                 navigate('/login', { replace: true });
             }
-
             throw new Error(message);
         }
     };

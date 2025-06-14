@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import Spinner from './Spinner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/Auth';
+import { useParams } from 'react-router-dom';
 
 interface GroupEditProps {
     setIsGroupEditOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -49,6 +50,7 @@ const GroupEdit: React.FC<GroupEditProps> = ({ groupData, setIsGroupEditOpen }) 
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { user } = useAuth();
+    const { id } = useParams();
 
     useEffect(() => {
         const filteredUsers = groupData?.members.filter(u => u._id !== user?._id);
@@ -154,6 +156,7 @@ const GroupEdit: React.FC<GroupEditProps> = ({ groupData, setIsGroupEditOpen }) 
         onSuccess: (data) => {
             const { success, message } = handleResponse(data);
             if (success) {
+                queryClient.invalidateQueries({ queryKey: ["CHAT_ID", id] });
                 queryClient.invalidateQueries({ queryKey: ["MY_CHATS"] });
                 toast.success(message);
                 handleClearSearch();

@@ -7,9 +7,6 @@ const IdIsValid = (id) => {
 
 const deleteFilesFromCloudinary = (publicIds) => { }
 
-
-
-
 module.exports = {
     IdIsValid,
     deleteFilesFromCloudinary,

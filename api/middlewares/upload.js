@@ -10,7 +10,7 @@ const fileFilter = (req, file, cb) => {
     const mime = allowedTypes.test(file.mimetype);
 
     if (ext && mime) cb(null, true);
-    else  cb(new Error('Only JPEG, PNG, GIF, WEBP, and JPG images are allowed'), false); // Reject the file
+    else cb(new Error('Only JPEG, PNG, GIF, WEBP, and JPG images are allowed'), false); // Reject the file
 };
 
 

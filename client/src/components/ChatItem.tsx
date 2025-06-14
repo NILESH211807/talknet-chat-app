@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface User {
     _id: string;

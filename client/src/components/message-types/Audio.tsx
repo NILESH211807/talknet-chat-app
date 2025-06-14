@@ -1,7 +1,6 @@
-import React from 'react'
 import { FaMicrophone } from 'react-icons/fa'
 
-const Audio = ({ msg }: any) => {
+const Audio = ({ data }: any) => {
     return (
         <div className="mb-2 min-w-[280px] max-w-[300px]">
             <div className="bg-[var(--bg-secondary)] p-2 rounded-sm">
@@ -11,7 +10,8 @@ const Audio = ({ msg }: any) => {
                         <span className="text-sm font-semibold text-[var(--text-secondary)]">Audio Message</span>
                     </div>
                     <a
-                        href={msg.audio}
+                        href={data?.url}
+                        target="_blank"
                         download
                         className="text-[var(--btn-primary)] hover:text-[var(--btn-secondary)] text-sm"
                         onClick={(e) => e.stopPropagation()}
@@ -20,7 +20,7 @@ const Audio = ({ msg }: any) => {
                     </a>
                 </div>
                 <audio
-                    src={msg.audio}
+                    src={data?.url}
                     controls
                     className="w-full h-8"
                     preload="metadata"

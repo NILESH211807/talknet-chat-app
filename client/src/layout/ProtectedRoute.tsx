@@ -1,10 +1,13 @@
 import { AuthProvider } from "../context/Auth";
+import { SocketProvider } from "../context/socket";
 import AppLayout from "./AppLayout";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return (
         <AuthProvider>
-            <AppLayout>{children}</AppLayout>
+            <SocketProvider>
+                <AppLayout>{children}</AppLayout>
+            </SocketProvider>
         </AuthProvider>
     )
 }

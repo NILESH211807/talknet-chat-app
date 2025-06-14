@@ -12,13 +12,14 @@ const authRouter = require("./routers/auth.router");
 const userRouter = require("./routers/user.router");
 const chatRouter = require("./routers/chat.router");
 const groupRouter = require("./routers/group.router");
+const uploadRouter = require("./routers/upload.router");
 const messageModel = require("./models/message.model");
 
-const authMiddleware = require("./middlewares/isAuth");
+const { authMiddleware, socketAuthMiddleware } = require("./middlewares/isAuth");
 const { createSingleChats, createGroupChats, createMessageInChat } = require("./seeders/chat");
 const { createServer } = require("http");
 const { NEW_MESSAGE, NEW_MESSAGE_ALERT } = require("./constants/events");
-const { getSockets, userSocketIds } = require("./lib/socketStore");
+const { getSockets, userSocketIDS } = require("./lib/socketStore");
 // const { createUserSignup } = require("./seeders/user");
 // const userSocketIds = new Map();
 // const { getSockets } = require("./lib/helper");
@@ -28,7 +29,13 @@ connectDb();
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: process.env.CLIENT_URI,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 // createSingleChats(10);
 // createGroupChats(10);
@@ -45,78 +52,81 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", authMiddleware, userRouter);
 app.use("/api/group", authMiddleware, groupRouter);
 app.use("/api/chat", authMiddleware, chatRouter);
+app.use("/api/upload/attachment", authMiddleware, uploadRouter);
+
 
 app.get("/", (req, res) => {
-   res.send("Welcome to Talknet API");
+    res.send("Welcome to Talknet API");
 });
 
-// io.use((socket, next) => {
-//     console.log("Socket connected", socket.id);
-//     next();
-// });
+io.use((socket, next) => {
+    cookieParser()(socket.request, socket.request.res,
+        async (error) => await socketAuthMiddleware(error, socket, next)
+    )
+});
+
+
+
 
 io.on("connection", (socket) => {
-   console.log("New client connected", socket.id);
+    console.log("New client connected", socket.id);
+    const user = socket.user;
 
-   const user = {
-      id: "680b2e8f5731a4bd0e4d50db",
-      name: "Ram"
-   }
+    userSocketIDS.set(user._id.toString(), socket.id);
 
-   userSocketIds.set(user.id.toString(), socket.id);
+    socket.on('NEW_MESSAGE', async ({ chatId, members, message, attachment }) => {
+        const messageForRealTime = {
+            content: message,
+            id: uuid(),
+            sender: { _id: user._id, name: user.name, },
+            chatId: chatId,
+            attachments: [attachment],
+            createdAt: new Date().toISOString(),
+        }
 
-   socket.on(NEW_MESSAGE, async ({ chatId, members, message }) => {
+        const messageForDb = {
+            sender: user._id,
+            content: message,
+            chat: chatId,
+            attachments: [attachment]
+        }
 
-      const messsageForRealTime = {
-         content: message,
-         id: uuid(),
-         sender: {
-            _id: user.id,
-            name: user.name,
-         },
-         chatId: chatId,
-         createdAt: new Date().toISOString()
-      }
+        // Get array of socket IDs for the members
+        const memberSocketIds = getSockets(members);
 
-      const messageForDB = {
-         sender: user.id,
-         content: message,
-         chat: chatId,
-      }
+        // Emit NEW_MESSAGE_RECEIVED to each socket individually
+        memberSocketIds.forEach(socketId => {
+            io.to(socketId).emit('NEW_MESSAGE_RECEIVED', {
+                chatId: chatId,
+                message: messageForRealTime
+            });
+        });
 
-      const usersSocket = getSockets(members);
-      io.to(usersSocket).emit(NEW_MESSAGE, {
-         chatId: chatId,
-         message: messsageForRealTime
-      });
+        // Also emit NEW_MESSAGE_ALERT to each socket
+        memberSocketIds.forEach(socketId => {
+            io.to(socketId).emit('NEW_MESSAGE_ALERT', { chatId });
+        });
 
-      io.to(usersSocket).emit(NEW_MESSAGE_ALERT, { chatId });
+        // Try to save message to database
+        try {
+            await messageModel.create(messageForDb);
+        } catch (error) {
+            console.log('Error in saving message', error.message);
+        }
+    });
 
-      // try {
-
-      //    await messageModel.create(messageForDB);
-      //    console.log('Message saved successfully');
-
-      // } catch (error) {
-      //    // console.log(error);
-      //    console.log('Error in saving message', error.message);
-      // }
-
-      // console.log('new message', messsageForRealTime);
-
-   });
-
-   socket.on("disconnect", () => {
-      console.log("Client disconnected", socket.id);
-      userSocketIds.delete(user.id.toString());
-   });
+    socket.on("disconnect", () => {
+        console.log("Client disconnected", socket.id);
+        userSocketIDS.delete(user._id.toString());
+    });
 });
+
 
 server.listen(process.env.PORT, () => {
-   console.log(`Server is running on port ${process.env.PORT}`);
+    console.log(`Server is running on port ${process.env.PORT}`);
 });
 
 
-module.exports = {
-   userSocketIds
-}
+// module.exports = {
+//     userSocketIds
+// }

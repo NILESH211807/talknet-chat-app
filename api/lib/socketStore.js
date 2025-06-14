@@ -1,12 +1,13 @@
-const userSocketIds = new Map();
+const userSocketIDS = new Map();
 
 const getSockets = (users = []) => {
-    const sockets = users.map((user) =>
-        userSocketIds.get(user.id.toString()));
-    return sockets;
+    const socketIds = users
+        .map((user) => userSocketIDS.get(user.toString()))
+        .filter(socketId => socketId !== undefined);
+    return socketIds;
 }
 
 module.exports = {
-    userSocketIds,
+    userSocketIDS,
     getSockets
 };

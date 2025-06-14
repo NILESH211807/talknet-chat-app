@@ -11,7 +11,6 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import Spinner from './Spinner';
 
 interface ProfileProps {
     isOpen: boolean;

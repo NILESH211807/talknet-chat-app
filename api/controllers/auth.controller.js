@@ -165,3 +165,25 @@ module.exports.login = async (req, res) => {
     }
 
 }
+
+// logout
+module.exports.logout = async (req, res) => {
+    try {
+
+        res.cookie('token', null, {
+            httpOnly: true,
+            expires: new Date(Date.now()),
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+        });
+
+        res.status(200).json({
+            success: true, message: 'Logout successful',
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false, message: error.message || 'Internal server error'
+        });
+    }
+}

@@ -65,11 +65,8 @@ io.use((socket, next) => {
     )
 });
 
-
-
-
 io.on("connection", (socket) => {
-    console.log("New client connected", socket.id);
+    // console.log("New client connected", socket.id);
     const user = socket.user;
 
     userSocketIDS.set(user._id.toString(), socket.id);
@@ -116,7 +113,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-        console.log("Client disconnected", socket.id);
+        // console.log("Client disconnected", socket.id);
         userSocketIDS.delete(user._id.toString());
     });
 });

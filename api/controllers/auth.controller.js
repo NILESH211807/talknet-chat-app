@@ -65,11 +65,13 @@ module.exports.signup = async (req, res) => {
 
         const token = newUser.generateToken();
 
-        res.cookie('token', token, {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.cookie("token", token, {
             httpOnly: true,
-            expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
+            secure: isProduction,
+            sameSite: isProduction ? "None" : "Lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
         });
 
         return res.status(200).json({
@@ -137,11 +139,13 @@ module.exports.login = async (req, res) => {
 
         const token = user.generateToken();
 
-        res.cookie('token', token, {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.cookie("token", token, {
             httpOnly: true,
-            expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax'
+            secure: isProduction,
+            sameSite: isProduction ? "None" : "Lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
         });
 
         return res.status(200).json({

@@ -187,6 +187,12 @@ module.exports.getChatDetails = async (req, res) => {
         });
     }
 
+    if (!IdIsValid(id)) {
+        return res.status(400).json({
+            success: false, message: 'Invalid chatId'
+        });
+    }
+
     try {
 
         if (req.query.populate === 'true') {
@@ -234,6 +240,12 @@ module.exports.deleteChat = async (req, res) => {
     if (!chatId) {
         return res.status(400).json({
             success: false, message: 'ChatId is required'
+        });
+    }
+
+    if (!IdIsValid(chatId)) {
+        return res.status(400).json({
+            success: false, message: 'Invalid chatId'
         });
     }
 
@@ -308,6 +320,12 @@ module.exports.getMessages = async (req, res) => {
             });
         }
 
+        if (!IdIsValid(chatId)) {
+            return res.status(400).json({
+                success: false, message: 'Invalid chatId'
+            });
+        }
+
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
@@ -337,6 +355,59 @@ module.exports.getMessages = async (req, res) => {
                 totalPages,
                 messages: messages.reverse()
             },
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false, message: error.message || 'Internal server error'
+        });
+    }
+}
+
+
+// delete chat person 
+module.exports.deleteChatPerson = async (req, res) => {
+
+    const { chatId } = req.params;
+
+    if (!chatId) {
+        return res.status(400).json({
+            success: false, message: 'ChatId is required'
+        });
+    }
+
+    if (!IdIsValid(chatId)) {
+        return res.status(400).json({
+            success: false, message: 'Invalid chatId'
+        });
+    }
+
+    try {
+
+        const chat = await chatModel.findById(chatId);
+
+        if (!chat) {
+            return res.status(404).json({
+                success: false, message: 'Chat not found'
+            });
+        }
+
+        if (chat.isGroup) {
+            return res.status(400).json({
+                success: false, message: 'You cannot delete a group'
+            });
+        }
+
+        chat.members = chat.members.filter((m) => m.toString() !== req.user.id);
+
+        await Promise.all([
+            messageModel.deleteMany({ chat: chatId }),
+            chat.save()
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: 'Chat person deleted successfully',
         });
 
     } catch (error) {

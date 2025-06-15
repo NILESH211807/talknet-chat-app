@@ -16,6 +16,9 @@ import { allMessage, newMessages } from '../types/message';
 import toast from 'react-hot-toast'
 import { attachmentUpload } from '../helper/uploader'
 import Loader from '../components/Loader'
+import ConfirmDeleteGroup from '../components/ConfirmDeleteGroup';
+import ConfirmLeaveGroup from '../components/ConfirmLeaveGroup';
+import ConfirmRemoveChat from '../components/ConfirmRemoveChat';
 
 const Messages = () => {
 
@@ -35,6 +38,9 @@ const Messages = () => {
     const chatMenuButtonRef = useRef<HTMLButtonElement>(null);
     const { imageUpload, audioUpload, videoUpload } = attachmentUpload();
     const [isLoading, setIsLoading] = useState<Boolean>(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState<boolean>(false);
+    const [isLeaveOpen, setIsLeaveOpen] = useState<boolean>(false);
+    const [isRemoveChatOpen, setIsRemoveChatOpen] = useState<boolean>(false);
 
     const [messages, setMessages] = useState<allMessage[]>([])
 
@@ -50,6 +56,14 @@ const Messages = () => {
         refetchOnWindowFocus: false,
         retry: false,
     });
+
+    useEffect(() => {
+        if (isPending) return;
+        if (isError && error.message === 'Invalid chatId') {
+            navigate('/chat', { replace: true });
+        }
+    }, [isError, error, isPending, navigate]);
+
 
     const { data: msgResp, isPending: msgPending, isError: msgIsError, error: msgError } = useQuery({
         queryKey: ['MESSAGE', id],
@@ -67,6 +81,8 @@ const Messages = () => {
             setMessages(msgResp?.data?.messages);
         }
     }, [msgResp]);
+
+
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -166,7 +182,8 @@ const Messages = () => {
                 setSelectedFile(null);
             }
 
-            toast.success('Message sent successfully', { id: toastId });
+            toast.dismiss(toastId);
+            // toast.success('Message sent successfully', { id: toastId });
 
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message', { id: toastId });
@@ -238,7 +255,7 @@ const Messages = () => {
                         <div className='bg-[var(--bg-primary)] py-2 px-4 flex items-center justify-between border-b border-[var(--border-primary)]'>
                             <div className='flex items-center gap-3'>
                                 {/* Back button for mobile */}
-                                <button onClick={() => navigate(-1)} className='p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors hidden max-[768px]:block'>
+                                <button onClick={() => navigate('/chat', { replace: true })} className='p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors hidden max-[768px]:block'>
                                     <IoArrowBack className='text-[var(--text-secondary)]' />
                                 </button>
 
@@ -280,6 +297,9 @@ const Messages = () => {
                                         chatMenuButtonRef={chatMenuButtonRef as React.RefObject<HTMLButtonElement>}
                                         setShowChatMenu={setShowChatMenu}
                                         setIsGroupEditOpen={setIsGroupEditOpen}
+                                        setIsDeleteOpen={setIsDeleteOpen}
+                                        setIsLeaveOpen={setIsLeaveOpen}
+                                        setIsRemoveChatOpen={setIsRemoveChatOpen}
                                     />
                                 )}
                             </div>
@@ -389,6 +409,25 @@ const Messages = () => {
                     </div>
                 )
             }
+
+            {/* Delete Group */}
+            <ConfirmDeleteGroup
+                isOpen={isDeleteOpen}
+                setIsLogoutOpen={setIsDeleteOpen}
+            />
+
+            {/* Leave Group */}
+            <ConfirmLeaveGroup
+                isOpen={isLeaveOpen}
+                setIsLeaveOpen={setIsLeaveOpen}
+            />
+
+            {/* Remove Chat */}
+            <ConfirmRemoveChat
+                isOpen={isRemoveChatOpen}
+                setIsRemoveChatOpen={setIsRemoveChatOpen}
+            />
+
         </div>
     )
 

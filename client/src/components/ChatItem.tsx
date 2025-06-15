@@ -31,7 +31,7 @@ const ChatItem: React.FC<ChatItemComponentProps> = ({ chat, user }) => {
     const otherUser = chat.members.find(member => member._id !== user._id);
 
     return (
-        <div onClick={() => navigate(`/chat/${chat.chatId}`)} className={`flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] cursor-pointer transition-all ${chat?.chatId === id ? 'bg-[var(--bg-secondary)]' : ''}`}>
+        <div onClick={() => navigate(`/chat/${chat.chatId}`, { replace: true })} className={`flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] cursor-pointer transition-all ${chat?.chatId === id ? 'bg-[var(--bg-secondary)]' : ''}`}>
             <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                 {chat?.isGroup ? <>
                     {chat?.profile && chat?.profile?.image_url ? (

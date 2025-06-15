@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FaUserAlt } from 'react-icons/fa';
 import { IoLogOut } from 'react-icons/io5';
 import { MdGroupAdd } from 'react-icons/md';
-import ConfirmLogout from './ConfirmLogout';
 
 interface MenuProps {
     setShowMenu: (show: boolean) => void;
     setIsCreateGroupOpen: (open: boolean) => void;
     setIsProfileOpen: (open: boolean) => void;
+    setIsLogoutOpen: (open: boolean) => void;
     buttonRef: React.RefObject<HTMLButtonElement>;
 }
 
@@ -15,18 +15,20 @@ const Menu: React.FC<MenuProps> = ({
     setShowMenu,
     setIsCreateGroupOpen,
     setIsProfileOpen,
+    setIsLogoutOpen,
     buttonRef
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
-    const [IsLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
                 buttonRef.current &&
-                !buttonRef.current.contains(event.target as Node) &&
-                menuRef.current &&
-                !menuRef.current.contains(event.target as Node)
+                !buttonRef.current.contains(event.target as Node)
+
+                // &&
+                // menuRef.current &&
+                // !menuRef.current.contains(event.target as Node)
             ) {
                 setShowMenu(false);
             }
@@ -37,6 +39,7 @@ const Menu: React.FC<MenuProps> = ({
             document.removeEventListener('click', handleClickOutside);
         };
     }, [buttonRef, setShowMenu]);
+
 
     return (
         <div
@@ -64,16 +67,14 @@ const Menu: React.FC<MenuProps> = ({
 
             <button
                 className="w-full text-red-400 cursor-pointer font-semibold text-sm px-4 py-3 text-left hover:bg-[var(--bg-secondary)] flex items-center gap-2"
-                onClick={() => setIsLogoutOpen(true)}>
+                onClick={() => {
+                    setShowMenu(false);
+                    setIsLogoutOpen(true);
+                }}>
                 <IoLogOut size={15} />
                 Logout
             </button>
-
-            {
-                IsLogoutOpen && (
-                    <ConfirmLogout isOpen={IsLogoutOpen} setIsLogoutOpen={setIsLogoutOpen} />
-                )
-            }
+            {/* <ConfirmLogout isOpen={IsLogoutOpen} setIsLogoutOpen={setIsLogoutOpen} /> */}
         </div>
     );
 };

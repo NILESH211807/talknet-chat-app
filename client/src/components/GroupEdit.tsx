@@ -174,8 +174,8 @@ const GroupEdit: React.FC<GroupEditProps> = ({ groupData, setIsGroupEditOpen }) 
 
     return (
         <>
-            <div className={`fixed top-0 right-0 w-full h-screen bg-[#00000067] backdrop:blur-2xl`}></div>
-            <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-md bg-[var(--bg-primary)] shadow-lg rounded-lg transform transition-transform duration-300 ease-in-out z-50`}>
+            <div className={`fixed top-0 right-0 w-full z-[1100] h-screen bg-[#00000067] backdrop:blur-2xl`}></div>
+            <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 z-[1200] -translate-y-1/2 w-[95%] max-w-md bg-[var(--bg-primary)] shadow-lg rounded-lg transform transition-transform duration-300 ease-in-out`}>
                 <div className="p-4 border-b border-[var(--border-primary)] flex items-center justify-between">
                     <h2 className="text-xl font-bold text-[var(--text-primary)]">Edit Group</h2>
                     <button

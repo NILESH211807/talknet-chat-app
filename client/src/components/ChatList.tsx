@@ -8,11 +8,13 @@ import Menu from './Menu';
 import { useAuth } from '../context/Auth';
 import { useChat } from '../context/Chats';
 import SearchUser from './SearchUser';
+import ConfirmLogout from './ConfirmLogout';
 
 const ChatList: React.FC = () => {
     const [showMenu, setShowMenu] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+    const [IsLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const { user } = useAuth();
     const { myAllChats } = useChat();
@@ -42,6 +44,7 @@ const ChatList: React.FC = () => {
                             setShowMenu={setShowMenu}
                             setIsCreateGroupOpen={setIsCreateGroupOpen}
                             setIsProfileOpen={setIsProfileOpen}
+                            setIsLogoutOpen={setIsLogoutOpen}
                         />
                     )}
                 </div>
@@ -68,6 +71,9 @@ const ChatList: React.FC = () => {
                 isOpen={isCreateGroupOpen}
                 onClose={() => setIsCreateGroupOpen(false)}
             />
+
+            <ConfirmLogout isOpen={IsLogoutOpen} setIsLogoutOpen={setIsLogoutOpen} />
+
         </div>
     );
 };

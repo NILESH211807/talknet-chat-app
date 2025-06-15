@@ -100,8 +100,6 @@ const SearchUser = () => {
     //  user add to chat
     const addToChat = (user: User) => {
         if (!user) return;
-        console.log(user);
-
         setUserId(user._id);
         mutation.mutate({ userId: user._id });
     }
@@ -114,11 +112,11 @@ const SearchUser = () => {
             data
         }),
         onSuccess: (data) => {
-            const { success, message } = handleResponse(data);
+            const { success, message, data: resData } = handleResponse(data);
             if (success && message == "Chat created successfully") {
                 toast.success(message);
                 handleClearSearch();
-                navigate(`/chat/${data.data._id}`);
+                navigate(`/chat/${resData.chatId}`);
             } else {
                 toast.error(message);
                 handleClearSearch();

@@ -118,8 +118,6 @@ const Messages = () => {
 
 
         try {
-            toast.loading('Please wait...', { id: toastId });
-            setIsLoading(true);
 
             let attachmentData = null;
             let response = null;
@@ -128,7 +126,8 @@ const Messages = () => {
 
 
             if (selectedFile) {
-
+                toast.loading('Please wait...', { id: toastId });
+                setIsLoading(true);
 
                 // Only JPEG, PNG, GIF, WEBP, and JPG images are allowed
                 const imageType = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"];
@@ -165,6 +164,9 @@ const Messages = () => {
                     public_id: response?.data?.public_id,
                     type: fileType
                 };
+
+                setIsLoading(false);
+                toast.dismiss(toastId);
             }
 
             // Prepare message data for socket
@@ -181,15 +183,11 @@ const Messages = () => {
                 setMessage('');
                 setSelectedFile(null);
             }
-
-            toast.dismiss(toastId);
             // toast.success('Message sent successfully', { id: toastId });
-
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message', { id: toastId });
         } finally {
             // toast.dismiss();
-            setIsLoading(false);
         }
     }
 
@@ -310,10 +308,9 @@ const Messages = () => {
                             setIsGroupEditOpen={setIsGroupEditOpen} />}
                         {/* Messages Container */}
                         <div className='flex-1 overflow-y-auto p-4 space-y-4 relative'>
-                            {/* <div className='fixed top-0 left-0 w-full h-full bg-[#0000001c] backdrop-blur-[3px]'></div> */}
                             {messages.length > 0 ? (
-                                messages.map((msg: allMessage) => (
-                                    <RenderMessage key={msg._id} user={user} id={id} msg={msg} />
+                                messages.map((msg: allMessage, index: Number) => (
+                                    <RenderMessage key={`message-${index}-${msg._id}`} user={user} id={id} msg={msg} />
                                 ))
                             ) : (
                                 <div className='flex-1 max-[700px]:hidden flex items-center flex-col justify-center text-[var(--text-secondary)]'>

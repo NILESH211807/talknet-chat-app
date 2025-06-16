@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 
 interface User {
@@ -27,35 +27,43 @@ interface ChatItemComponentProps {
 const ChatItem: React.FC<ChatItemComponentProps> = ({ chat, user }) => {
     const navigate = useNavigate();
     const { id } = useParams();
-    // Filter out the current user from members to show other user's profile
-    const otherUser = chat.members.find(member => member._id !== user._id);
+
+    const chatData = useMemo(() => {
+        let chat_data = {
+            name: '',
+            profileImage: '',
+        }
+
+        if (chat?.isGroup) {
+            chat_data.name = chat.name;
+            chat_data.profileImage = chat?.profile?.image_url || '';
+        } else {
+
+            let otherUser = chat?.members.find((member: { _id: string }) => member._id !== user?._id);
+            chat_data.name = otherUser?.name || '';
+            chat_data.profileImage = otherUser?.profile?.image_url || '';
+        }
+        return chat_data;
+    }, [chat?.members, user?._id]);
+
 
     return (
-        <div onClick={() => navigate(`/chat/${chat.chatId}`, { replace: true })} className={`flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] cursor-pointer transition-all ${chat?.chatId === id ? 'bg-[var(--bg-secondary)]' : ''}`}>
+        <div onClick={() => navigate(`/chat/${chat.chatId}`, { replace: true })} className={`border-b border-b-[#e0e0e0] flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] cursor-pointer transition-all ${chat?.chatId === id ? 'bg-[var(--bg-secondary)]' : ''}`}>
             <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-                {chat?.isGroup ? <>
-                    {chat?.profile && chat?.profile?.image_url ? (
-                        <img src={chat?.profile?.image_url} alt={chat.name} className="w-full h-full object-cover" />
+                {
+                    chatData?.profileImage ? (
+                        <img src={chatData?.profileImage} alt={chatData?.name} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full bg-[var(--bg-secondary)] flex items-center justify-center">
-                            <span className="text-[var(--text-secondary)] text-2xl">G</span>
-                        </div>
-                    )}
-                </> : (
-                    otherUser?.profile ? (
-                        <img src={otherUser.profile.image_url} alt={chat.name} className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full bg-[var(--bg-secondary)] flex items-center justify-center">
-                            <span className="text-[var(--text-secondary)] text-2xl">{chat.name.charAt(0)}</span>
+                            <span className="text-[var(--text-secondary)] text-2xl">{chatData?.name.charAt(0)}</span>
                         </div>
                     )
-                )}
+                }
             </div>
-
             {/* Chat Info */}
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-[15px] text-[var(--text-primary)] truncate">{chat?.name}</h3>
+                    <h3 className="font-semibold text-[15px] text-[var(--text-primary)] truncate">{chatData?.name}</h3>
                     <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">7:00 AM</span>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] truncate">No messages yet</p>

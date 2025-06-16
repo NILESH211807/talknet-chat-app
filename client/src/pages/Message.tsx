@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { FaPaperclip, FaPaperPlane, FaImage, FaVideo, FaMicrophone, FaFile } from 'react-icons/fa'
 import { BsThreeDotsVertical } from 'react-icons/bs'
 import { IoArrowBack } from 'react-icons/io5'
@@ -41,7 +41,7 @@ const Messages = () => {
     const [isDeleteOpen, setIsDeleteOpen] = useState<boolean>(false);
     const [isLeaveOpen, setIsLeaveOpen] = useState<boolean>(false);
     const [isRemoveChatOpen, setIsRemoveChatOpen] = useState<boolean>(false);
-
+    const [isOnline, setIsOnline] = useState(false);
     const [messages, setMessages] = useState<allMessage[]>([])
 
     const { data, isPending, isError, error } = useQuery({
@@ -64,6 +64,8 @@ const Messages = () => {
         }
     }, [isError, error, isPending, navigate]);
 
+    // message infinity scroll scroll by top 
+
 
     const { data: msgResp, isPending: msgPending, isError: msgIsError, error: msgError } = useQuery({
         queryKey: ['MESSAGE', id],
@@ -81,7 +83,6 @@ const Messages = () => {
             setMessages(msgResp?.data?.messages);
         }
     }, [msgResp]);
-
 
 
     useEffect(() => {
@@ -115,7 +116,6 @@ const Messages = () => {
 
         if (!message.trim() && !selectedFile) return
         let toastId = '1';
-
 
         try {
 
@@ -186,8 +186,6 @@ const Messages = () => {
             // toast.success('Message sent successfully', { id: toastId });
         } catch (error: any) {
             toast.error(error.message || 'Failed to send message', { id: toastId });
-        } finally {
-            // toast.dismiss();
         }
     }
 
@@ -229,6 +227,39 @@ const Messages = () => {
     const eventHandlers = { NEW_MESSAGE_RECEIVED: newMessagesHandler };
     useSocketEvents(socket, eventHandlers);
 
+    const otherUser = useMemo(() => {
+        return data?.data?.members.find((member: { _id: string }) => member._id !== user?._id);
+    }, [data?.data?.members, user?._id]);
+
+    useEffect(() => {
+
+        // If group chat, do nothing
+        if (data?.data?.isGroup) return;
+
+        const friendId = otherUser?._id;
+
+        if (!socket || !friendId) return;
+
+        // Initial check
+        socket.emit('CHECK_ONLINE_STATUS', friendId, (res: { online: boolean }) => {
+            setIsOnline(res.online);
+        });
+
+        // Listen to live changes
+        socket.on('USER_ONLINE', (userId: string) => {
+            if (userId === friendId) setIsOnline(true);
+        });
+
+        socket.on('USER_OFFLINE', (userId: string) => {
+            if (userId === friendId) setIsOnline(false);
+        });
+
+        return () => {
+            socket.off('USER_ONLINE');
+            socket.off('USER_OFFLINE');
+        };
+    }, [socket, otherUser]);
+
 
     return (
         <div className='w-full h-screen flex'>
@@ -259,9 +290,9 @@ const Messages = () => {
 
                                 <div className='relative'>
                                     <div className='w-10 h-10 rounded-full overflow-hidden'>
-                                        {data?.data?.profile && data?.data?.profile?.image_url ? (
+                                        {otherUser?.profile && otherUser?.profile?.image_url ? (
                                             <img
-                                                src={data.data.profile.image_url}
+                                                src={otherUser.profile.image_url}
                                                 alt="Profile"
                                                 className='w-full h-full object-cover'
                                             />
@@ -271,11 +302,17 @@ const Messages = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div>
+                                    {
+                                        !data?.data?.isGroup && isOnline && (
+                                            <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div>
+                                            // <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                        )
+                                    }
+                                    {/* <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div> */}
                                 </div>
                                 <div>
                                     <div className='flex items-center gap-2'>
-                                        <h3 className='font-semibold text-[var(--text-primary)]'>{data?.data?.name}</h3>
+                                        <h3 className='font-semibold text-[var(--text-primary)]'>{otherUser?.name}</h3>
                                     </div>
                                 </div>
                             </div>

@@ -65,13 +65,26 @@ io.use((socket, next) => {
     )
 });
 
+const onlineUsers = new Map(); // userId -> socketId
+
+function isUserOnline(userId) {
+    return onlineUsers.has(userId);
+}
+
 io.on("connection", (socket) => {
-    // console.log("New client connected", socket.id);
+
     const user = socket.user;
+    const userId = user._id.toString();
+
+    if (userId) {
+        onlineUsers.set(userId, socket.id);
+        io.emit('USER_ONLINE', userId);
+    }
 
     userSocketIDS.set(user._id.toString(), socket.id);
 
     socket.on('NEW_MESSAGE', async ({ chatId, members, message, attachment }) => {
+
         const messageForRealTime = {
             content: message,
             id: uuid(),
@@ -113,8 +126,17 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-        // console.log("Client disconnected", socket.id);
         userSocketIDS.delete(user._id.toString());
+        if (userId) {
+            onlineUsers.delete(userId);
+            io.emit('USER_OFFLINE', userId); // broadcast
+        }
+
+    });
+
+    // Handle online check request from client
+    socket.on("CHECK_ONLINE_STATUS", (targetUserId, callback) => {
+        callback({ online: onlineUsers.has(targetUserId) });
     });
 });
 

@@ -114,7 +114,7 @@ const SearchUser = () => {
         onSuccess: (data) => {
             const { success, message, data: resData } = handleResponse(data);
             if (success && message == "Chat created successfully") {
-                toast.success(message);
+                // toast.success(message);
                 handleClearSearch();
                 navigate(`/chat/${resData.chatId}`);
             } else {

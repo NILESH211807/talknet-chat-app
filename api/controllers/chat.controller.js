@@ -91,15 +91,37 @@ module.exports.myChats = async (req, res) => {
         }
 
         const allChats = await chatModel.find({ members: req.user.id })
-            .populate('members', 'name profile').sort({ updatedAt: -1 }).lean();
+            .populate('members', 'name profile')
+            .sort({ updatedAt: -1 })
+            .lean();
 
-        // console.log(allChats);
+        const chatData = await Promise.all(
+            allChats.map(async ({ _id, ...rest }) => {
+                // Get the last message only
+                const lastMessage = await messageModel.findOne({ chat: _id })
+                    .sort({ createdAt: -1 })
+                    .lean().select('content attachments createdAt updatedAt');
+
+                const lastMessageContent = lastMessage?.content || lastMessage?.attachments[0]?.type;
+
+                // Count only unread messages not sent by the current user
+                const unreadCount = await messageModel.countDocuments({
+                    chat: _id,
+                    isRead: false,
+                    sender: { $ne: req.user.id }
+                });
+
+                return {
+                    chatId: _id,
+                    ...rest,
+                    lastMessage: lastMessageContent,
+                    unread: unreadCount
+                };
+            })
+        );
 
         res.status(200).json({
-            success: true, data: allChats.map(({ _id, ...rest }) => ({
-                chatId: _id,
-                ...rest
-            }))
+            success: true, data: chatData
         });
 
     } catch (error) {
@@ -347,6 +369,11 @@ module.exports.getMessages = async (req, res) => {
         }
 
         const totalPages = Math.ceil(totalMessages / limit) || 0;
+
+        await messageModel.updateMany(
+            { chat: chatId, sender: { $ne: req.user.id }, isRead: false },
+            { $set: { isRead: true } }
+        );
 
         res.status(200).json({
             success: true,

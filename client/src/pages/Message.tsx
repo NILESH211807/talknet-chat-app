@@ -5,7 +5,7 @@ import { IoArrowBack } from 'react-icons/io5'
 import ChatList from '../components/ChatList'
 import { useNavigate, useParams } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAxios } from '../hook/useAxios';
 import GroupEdit from '../components/GroupEdit';
 import { getSocket } from '../context/socket';
@@ -20,6 +20,11 @@ import ConfirmDeleteGroup from '../components/ConfirmDeleteGroup';
 import ConfirmLeaveGroup from '../components/ConfirmLeaveGroup';
 import ConfirmRemoveChat from '../components/ConfirmRemoveChat';
 
+interface Chat {
+    chatId: string;
+    unread: number;
+}
+
 const Messages = () => {
 
     const [message, setMessage] = useState('')
@@ -30,6 +35,7 @@ const Messages = () => {
     const { id } = useParams();
     const { fetchData } = useAxios();
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const [isGroupEditOpen, setIsGroupEditOpen] = useState(false);
     const socket = getSocket();
@@ -42,7 +48,8 @@ const Messages = () => {
     const [isLeaveOpen, setIsLeaveOpen] = useState<boolean>(false);
     const [isRemoveChatOpen, setIsRemoveChatOpen] = useState<boolean>(false);
     const [isOnline, setIsOnline] = useState(false);
-    const [messages, setMessages] = useState<allMessage[]>([])
+    const [messages, setMessages] = useState<allMessage[]>([]);
+    const queryClient = useQueryClient();
 
     const { data, isPending, isError, error } = useQuery({
         queryKey: ['CHAT_ID', id],
@@ -81,6 +88,19 @@ const Messages = () => {
     useEffect(() => {
         if (msgResp?.data?.messages) {
             setMessages(msgResp?.data?.messages);
+            // manually update the chat list unread count 
+            const chat = queryClient.getQueryData<{ data: Chat[] }>(['MY_CHATS']);
+
+            const updatedChat = chat?.data?.map((chat) => {
+                if (chat.chatId === id) {
+                    return {
+                        ...chat,
+                        unread: 0,
+                    };
+                }
+                return chat;
+            });
+            queryClient.setQueryData(['MY_CHATS'], { data: updatedChat });
         }
     }, [msgResp]);
 
@@ -189,7 +209,6 @@ const Messages = () => {
         }
     }
 
-
     const handleFileSelect = (type: string) => {
         const fileInput = document.createElement('input')
         fileInput.type = 'file'
@@ -261,6 +280,24 @@ const Messages = () => {
     }, [socket, otherUser]);
 
 
+
+
+    useEffect(() => {
+        if (!messagesContainerRef.current) return;
+
+        const handleTopScroll = (e: any) => {
+            if (messagesContainerRef.current) {
+                const isScrolledToTop = e.target.scrollTop === 0;
+                if (isScrolledToTop) {
+                    console.log('Fetch more messages');
+                }
+            }
+        }
+
+        messagesContainerRef.current.addEventListener('scroll', handleTopScroll);
+        return () => messagesContainerRef.current?.removeEventListener('scroll', handleTopScroll);
+    }, [messagesContainerRef]);
+
     return (
         <div className='w-full h-screen flex'>
             {/* ChatList - Hide on mobile when showing messages */}
@@ -305,10 +342,8 @@ const Messages = () => {
                                     {
                                         !data?.data?.isGroup && isOnline && (
                                             <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div>
-                                            // <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
                                         )
                                     }
-                                    {/* <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--bg-primary)]'></div> */}
                                 </div>
                                 <div>
                                     <div className='flex items-center gap-2'>
@@ -344,7 +379,7 @@ const Messages = () => {
                             groupData={data?.data}
                             setIsGroupEditOpen={setIsGroupEditOpen} />}
                         {/* Messages Container */}
-                        <div className='flex-1 overflow-y-auto p-4 space-y-4 relative'>
+                        <div className='flex-1 overflow-y-auto p-4 space-y-4 relative' ref={messagesContainerRef}>
                             {messages.length > 0 ? (
                                 messages.map((msg: allMessage, index: Number) => (
                                     <RenderMessage key={`message-${index}-${msg._id}`} user={user} id={id} msg={msg} />

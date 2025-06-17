@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { FaUser } from 'react-icons/fa';
 import ChatItem from './ChatItem';
@@ -9,6 +9,14 @@ import { useAuth } from '../context/Auth';
 import { useChat } from '../context/Chats';
 import SearchUser from './SearchUser';
 import ConfirmLogout from './ConfirmLogout';
+import { getSocket } from '../context/socket';
+import { useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+
+interface Chat {
+    chatId: string;
+    unread: number;
+}
 
 const ChatList: React.FC = () => {
     const [showMenu, setShowMenu] = useState(false);
@@ -18,6 +26,31 @@ const ChatList: React.FC = () => {
     const buttonRef = useRef<HTMLButtonElement>(null);
     const { user } = useAuth();
     const { myAllChats } = useChat();
+    const socket = getSocket();
+    const queryClient = useQueryClient();
+    const { id } = useParams();
+
+
+    useEffect(() => {
+        if (socket) {
+            socket.on('UNREAD_COUNT', (data) => {
+                if (data.chatId === id) return;
+                const chat = queryClient.getQueryData<{ data: Chat[] }>(['MY_CHATS']);
+
+                const updatedChat = chat?.data?.map((chat) => {
+                    if (chat.chatId === data.chatId) {
+                        return {
+                            ...chat,
+                            unread: data.unread,
+                        };
+                    }
+                    return chat;
+                });
+
+                queryClient.setQueryData(['MY_CHATS'], { data: updatedChat });
+            });
+        }
+    }, [socket]);
 
     return (
         <div className="w-[380px] max-[700px]:w-full h-screen bg-[var(--bg-primary)] border-r border-[var(--border-primary)]">

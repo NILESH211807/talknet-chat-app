@@ -5,11 +5,13 @@ const messageSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: [true, "Sender is required"],
+        index: true,
     },
     chat: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Chat",
-        required: [true, "Chat is required"]
+        required: [true, "Chat is required"],
+        index: true,
     },
     content: {
         type: String,
@@ -29,6 +31,11 @@ const messageSchema = new mongoose.Schema({
             },
         }
     ],
+    isRead: {
+        type: Boolean,
+        default: false,
+        index: true,
+    }
 }, { timestamps: true, versionKey: false });
 
 const Message = mongoose.model("Message", messageSchema);

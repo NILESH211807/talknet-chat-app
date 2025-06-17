@@ -14,6 +14,7 @@ const chatRouter = require("./routers/chat.router");
 const groupRouter = require("./routers/group.router");
 const uploadRouter = require("./routers/upload.router");
 const messageModel = require("./models/message.model");
+const chatModel = require("./models/chat.model");
 
 const { authMiddleware, socketAuthMiddleware } = require("./middlewares/isAuth");
 const { createSingleChats, createGroupChats, createMessageInChat } = require("./seeders/chat");
@@ -78,7 +79,7 @@ io.on("connection", (socket) => {
 
     if (userId) {
         onlineUsers.set(userId, socket.id);
-        io.emit('USER_ONLINE', userId);
+        io.emit('USER_ONLINE', userId); // broadcast
     }
 
     userSocketIDS.set(user._id.toString(), socket.id);
@@ -94,11 +95,14 @@ io.on("connection", (socket) => {
             createdAt: new Date().toISOString(),
         }
 
-        const messageForDb = {
+        let messageForDb = {
             sender: user._id,
             content: message,
             chat: chatId,
-            attachments: [attachment]
+        }
+
+        if (attachment) {
+            messageForDb.attachments = [attachment];
         }
 
         // Get array of socket IDs for the members
@@ -122,6 +126,28 @@ io.on("connection", (socket) => {
             await messageModel.create(messageForDb);
         } catch (error) {
             console.log('Error in saving message', error.message);
+        }
+
+        // Find all chat members except sender
+        const chat = await chatModel.findById(chatId).lean();
+        const recipients = chat.members.filter(id => id.toString() !== userId.toString());
+
+        // Send real-time unread count to each recipient
+        for (const recipientId of recipients) {
+            const unreadCount = await messageModel.countDocuments({
+                chat: chatId,
+                isRead: false,
+                sender: { $ne: recipientId }
+            });
+
+            const socketId = onlineUsers.get(recipientId.toString());
+
+            if (socketId) {
+                io.to(socketId).emit("UNREAD_COUNT", { // broadcast
+                    chatId,
+                    unread: unreadCount
+                });
+            }
         }
     });
 

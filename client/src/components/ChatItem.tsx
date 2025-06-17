@@ -14,8 +14,10 @@ interface ChatItemProps {
     chatId: string;
     isGroup: boolean;
     members: User[];
-    createdAt?: string;
-    updatedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    lastMessage?: string;
+    unread: number;
     profile?: { image_url: string, public_id: string };
 }
 
@@ -61,23 +63,32 @@ const ChatItem: React.FC<ChatItemComponentProps> = ({ chat, user }) => {
                 }
             </div>
             {/* Chat Info */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 relative">
                 <div className="flex justify-between items-start">
                     <h3 className="font-semibold text-[15px] text-[var(--text-primary)] truncate">{chatData?.name}</h3>
-                    <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">7:00 AM</span>
+                    <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">{new Date(chat?.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    })}</span>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)] truncate">No messages yet</p>
-            </div>
 
-            {/* Unread Count */}
-            <div className="bg-[var(--btn-primary)] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                5
+                {
+                    chat?.lastMessage ? (
+                        <p className="text-sm text-[var(--text-secondary)] truncate">{chat?.lastMessage}</p>
+                    ) : (
+                        <p className="text-sm text-[var(--text-secondary)] truncate">No messages yet</p>
+                    )
+                }
+
+                {
+                    chat?.unread > 0 && (
+                        <div className="bg-[var(--btn-primary)] absolute right-2 top-1/2 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            {chat?.unread}
+                        </div>
+                    )
+                }
             </div>
-            {/* {unreadCount && unreadCount > 0 && (
-                <div className="bg-[var(--btn-primary)] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                    {unreadCount}
-                </div>
-            )} */}
         </div>
     );
 }

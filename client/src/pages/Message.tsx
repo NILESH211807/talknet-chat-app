@@ -48,7 +48,6 @@ const Messages = () => {
     const [isLeaveOpen, setIsLeaveOpen] = useState<boolean>(false);
     const [isRemoveChatOpen, setIsRemoveChatOpen] = useState<boolean>(false);
     const [isOnline, setIsOnline] = useState(false);
-    const [messages, setMessages] = useState<allMessage[]>([]);
     const queryClient = useQueryClient();
 
     const { data, isPending, isError, error } = useQuery({
@@ -74,7 +73,6 @@ const Messages = () => {
 
     // infinity scroll 
     const {
-        status,
         data: msgResp,
         isError: msgIsError,
         error: msgError,

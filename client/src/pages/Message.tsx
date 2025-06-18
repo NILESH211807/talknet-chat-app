@@ -98,20 +98,28 @@ const Messages = () => {
         refetchOnWindowFocus: false,
     });
 
-    // on scroll fetch next page 
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
-        const handleScroll = async () => {
-            if (container.scrollTop == 0 && hasNextPage && !isFetchingNextPage) {
-                console.log('fetching next page');
-                fetchNextPage();
+        let timeout: NodeJS.Timeout | null = null;
+
+        const handleScroll = () => {
+            if (container.scrollTop === 0 && hasNextPage && !isFetchingNextPage) {
+                if (timeout) clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    fetchNextPage(); // 👈 trigger here after delay
+                }, 300); // 300ms delay
             }
         };
+
         container.addEventListener("scroll", handleScroll);
-        return () => container.removeEventListener("scroll", handleScroll);
+        return () => {
+            container.removeEventListener("scroll", handleScroll);
+            if (timeout) clearTimeout(timeout);
+        };
     }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
 
     // clear all fetched page when id changed 
     useEffect(() => {
@@ -312,7 +320,7 @@ const Messages = () => {
         setTimeout(() => {
             scrollToBottom();
         }, 100);
-    }, []); 
+    }, []);
 
     const eventHandlers = { NEW_MESSAGE_RECEIVED: newMessagesHandler };
     useSocketEvents(socket, eventHandlers);
@@ -438,12 +446,24 @@ const Messages = () => {
                                     .reverse()
                                     .map((page, pageIndex) =>
                                         page.map((msg: allMessage, msgIndex: number) => (
-                                            <RenderMessage
-                                                key={`message-${msg._id}-${pageIndex}-${msgIndex}`}
-                                                user={user}
-                                                id={id}
-                                                msg={msg}
-                                            />
+                                            <>
+                                                {msgIndex === 0 && (
+                                                    <p className='text-center text-[var(--text-secondary)] text-sm mt-5'>
+                                                        {new Date(msg.createdAt).toLocaleDateString('en-US', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric'
+                                                        })}
+                                                    </p>
+                                                )}
+
+                                                <RenderMessage
+                                                    key={`message-${msg._id}-${pageIndex}-${msgIndex}`}
+                                                    user={user}
+                                                    id={id}
+                                                    msg={msg}
+                                                />
+                                            </>
                                         ))
                                     )}
 

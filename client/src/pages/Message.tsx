@@ -5,7 +5,7 @@ import { IoArrowBack } from 'react-icons/io5'
 import ChatList from '../components/ChatList'
 import { useNavigate, useParams } from 'react-router-dom';
 import UserMenu from '../components/UserMenu';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAxios } from '../hook/useAxios';
 import GroupEdit from '../components/GroupEdit';
 import { getSocket } from '../context/socket';
@@ -71,23 +71,58 @@ const Messages = () => {
         }
     }, [isError, error, isPending, navigate]);
 
-    // message infinity scroll scroll by top 
 
-
-    const { data: msgResp, isPending: msgPending, isError: msgIsError, error: msgError } = useQuery({
+    // infinity scroll 
+    const {
+        status,
+        data: msgResp,
+        isError: msgIsError,
+        error: msgError,
+        isFetching: msgPending,
+        isFetchingNextPage,
+        fetchNextPage,
+        hasNextPage,
+    } = useInfiniteQuery({
         queryKey: ['MESSAGE', id],
-        queryFn: async () => await fetchData({
-            method: 'GET',
-            url: `/api/chat/message/${id}`
-        }),
-        enabled: !!id,
+        queryFn: async ({ pageParam = 1 }) => {
+            const response = await fetchData({
+                method: 'GET',
+                url: `/api/chat/message/${id}`,
+                params: { page: pageParam, limit: 10 },
+            });
+            return response.data.messages;
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) =>
+            lastPage?.length === 10 ? allPages.length + 1 : undefined,
         refetchOnWindowFocus: false,
-        retry: false,
     });
 
+    // on scroll fetch next page 
     useEffect(() => {
-        if (msgResp?.data?.messages) {
-            setMessages(msgResp?.data?.messages);
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = async () => {
+            if (container.scrollTop == 0 && hasNextPage && !isFetchingNextPage) {
+                console.log('fetching next page');
+                fetchNextPage();
+            }
+        };
+        container.addEventListener("scroll", handleScroll);
+        return () => container.removeEventListener("scroll", handleScroll);
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+    // clear all fetched page when id changed 
+    useEffect(() => {
+        return () => {
+            queryClient.removeQueries({ queryKey: ['MESSAGE', id] });
+        }
+    }, [id, queryClient]);
+
+
+    useEffect(() => {
+        if (msgResp?.pages) {
             // manually update the chat list unread count 
             const chat = queryClient.getQueryData<{ data: Chat[] }>(['MY_CHATS']);
 
@@ -100,6 +135,7 @@ const Messages = () => {
                 }
                 return chat;
             });
+
             queryClient.setQueryData(['MY_CHATS'], { data: updatedChat });
         }
     }, [msgResp]);
@@ -121,15 +157,6 @@ const Messages = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    useEffect(() => {
-        scrollToBottom()
-    }, [messages])
-
-    const scrollToBottom = () => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-        }
-    }
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -238,10 +265,54 @@ const Messages = () => {
         }
     }
 
+    // message send and receive scroll to bottom last message 
+    const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    useEffect(() => {
+        if (!msgResp) return;
+        if (msgResp.pages.length === 1) {
+            scrollToBottom();
+        }
+    }, [msgResp]);
+
+
     // new message update
     const newMessagesHandler = useCallback((data: newMessages) => {
-        setMessages(prev => [...prev, data.message]);
-    }, []);
+        // add new message in queryClient data
+        const allMessages = queryClient.getQueryData(['MESSAGE', id]) as any;
+
+        const newMessage = {
+            _id: data.message.id,
+            sender: {
+                _id: data.message.sender._id,
+                name: data.message.sender.name,
+            },
+            chat: data.chatId,
+            content: data.message.content,
+            attachments: data.message.attachments,
+            createdAt: data.message.createdAt,
+            updatedAt: data.message.createdAt,
+        };
+
+
+        const allData = {
+            ...allMessages,
+            pages: [
+                [...allMessages.pages[0], newMessage],
+                ...allMessages.pages.slice(1)
+            ],
+            pageParams: allMessages.pageParams
+        };
+
+        queryClient.setQueryData(['MESSAGE', id], allData);
+        setTimeout(() => {
+            scrollToBottom();
+        }, 100);
+    }, []); 
 
     const eventHandlers = { NEW_MESSAGE_RECEIVED: newMessagesHandler };
     useSocketEvents(socket, eventHandlers);
@@ -251,7 +322,6 @@ const Messages = () => {
     }, [data?.data?.members, user?._id]);
 
     useEffect(() => {
-
         // If group chat, do nothing
         if (data?.data?.isGroup) return;
 
@@ -279,24 +349,6 @@ const Messages = () => {
         };
     }, [socket, otherUser]);
 
-
-
-
-    useEffect(() => {
-        if (!messagesContainerRef.current) return;
-
-        const handleTopScroll = (e: any) => {
-            if (messagesContainerRef.current) {
-                const isScrolledToTop = e.target.scrollTop === 0;
-                if (isScrolledToTop) {
-                    console.log('Fetch more messages');
-                }
-            }
-        }
-
-        messagesContainerRef.current.addEventListener('scroll', handleTopScroll);
-        return () => messagesContainerRef.current?.removeEventListener('scroll', handleTopScroll);
-    }, [messagesContainerRef]);
 
     return (
         <div className='w-full h-screen flex'>
@@ -375,31 +427,53 @@ const Messages = () => {
                             </div>
                         </div>
 
+
                         {isGroupEditOpen && <GroupEdit
                             groupData={data?.data}
                             setIsGroupEditOpen={setIsGroupEditOpen} />}
                         {/* Messages Container */}
-                        <div className='flex-1 overflow-y-auto p-4 space-y-4 relative' ref={messagesContainerRef}>
-                            {messages.length > 0 ? (
-                                messages.map((msg: allMessage, index: Number) => (
-                                    <RenderMessage key={`message-${index}-${msg._id}`} user={user} id={id} msg={msg} />
-                                ))
-                            ) : (
-                                <div className='flex-1 max-[700px]:hidden flex items-center flex-col justify-center text-[var(--text-secondary)]'>
-                                    <p className='text-md mt-5'>No messages found. Start a conversation.</p>
+                        <div className='flex-1 overflow-y-auto p-4 space-y-4 relative' ref={messagesContainerRef} style={{ height: '500px', overflowY: 'auto' }}>
+                            {msgResp?.pages &&
+                                [...msgResp.pages]
+                                    .reverse()
+                                    .map((page, pageIndex) =>
+                                        page.map((msg: allMessage, msgIndex: number) => (
+                                            <RenderMessage
+                                                key={`message-${msg._id}-${pageIndex}-${msgIndex}`}
+                                                user={user}
+                                                id={id}
+                                                msg={msg}
+                                            />
+                                        ))
+                                    )}
+
+                            {msgResp?.pages && (
+                                msgResp.pages[0].length === 0 && (
+                                    <div className='flex-1 h-full max-[700px]:hidden flex items-center flex-col justify-center text-[var(--text-secondary)]'>
+                                        <p className='text-md mt-5'>No messages found. Start a conversation.</p>
+                                    </div>
+                                )
+                            )}
+
+
+                            {msgPending || isFetchingNextPage && (
+                                <div className='w-full mt-10 text-center'>
+                                    <span className="loading loading-dots loading-xl absolute top-5"></span>
                                 </div>
                             )}
-                            <div ref={messagesEndRef} />
-                            {msgPending && (
+
+                            {/* {msgPending && (
                                 <div className='w-full mt-10 text-center'>
                                     <span className="loading loading-dots loading-xl"></span>
                                 </div>
-                            )}
+                            )} */}
+
                             {msgIsError && (
                                 <div className='w-full mt-10 text-center'>
                                     <p className='text-md mt-5 text-red-500'>{msgError.message}</p>
                                 </div>
                             )}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         {/* Message Input */}

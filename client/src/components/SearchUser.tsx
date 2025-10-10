@@ -130,6 +130,7 @@ const SearchUser = () => {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ['MY_CHATS'] })
     })
 
+
     return (
         <div className="py-2 px-2 mt-3 relative">
             <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] flex items-center gap-2 px-3 py-2 rounded-full focus-within:border-[var(--btn-primary)]">
@@ -157,7 +158,7 @@ const SearchUser = () => {
             </div>
 
             {searchResults.length > 0 && (
-                <div ref={searchInputRef} className='w-[90%] max-h-52 bg-[var(--bg-primary)] absolute top-16 left-1/2 -translate-x-1/2 border border-[var(--border-primary)] rounded-md overflow-y-auto'>
+                <div ref={searchInputRef} className='w-[90%] max-h-52 bg-[var(--bg-primary)] absolute top-16 left-1/2 -translate-x-1/2 border border-[var(--border-primary)] rounded-md overflow-y-auto z-[300]'>
                     <div className="flex flex-col">
                         {searchResults.map((user: User) => (
                             <div
@@ -167,7 +168,7 @@ const SearchUser = () => {
                                 <div className="w-10 h-10 rounded-full overflow-hidden">
                                     {user.profile ? (
                                         <img
-                                            src={user.profile}
+                                            src={user.profile?.image_url}
                                             alt={user.name}
                                             className="w-full h-full object-cover"
                                         />

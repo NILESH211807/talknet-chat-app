@@ -48,7 +48,6 @@ const Login: React.FC = () => {
         },
         onError: (error: any) => {
             const { message } = handleResponse(error);
-            // console.log(error);
             toast.error(message || 'Something went wrong');
         }
     })
@@ -100,6 +99,15 @@ const Login: React.FC = () => {
                         isLoading={mutation.isPending}>
                         Login
                     </Button>
+
+
+                    {/* test login credentials */}
+                    <p className='text-sm text-left font-semibold mt-2 mb-3 w-full'>Test Login Credentials</p>
+                    <div className='w-full bg-gray-100 px-5 py-2 rounded-md'>
+                        <p className='text-sm text-left font-semibold'>Email: test@test.com</p>
+                        <p className='text-sm text-left font-semibold'>Password: test@123</p>
+                    </div>
+
                     <p className='text-sm text-center font-semibold mt-2'>Don't have an account? <Link to='/signup' className='text-[var(--btn-primary)]'>Signup</Link></p>
                 </form>
             </div>

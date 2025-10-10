@@ -12,7 +12,9 @@ interface User {
     _id: string;
     name: string;
     username: string;
-    profile: string;
+    profile: {
+        image_url: string;
+    };
 }
 
 interface newChatStart {

@@ -4,8 +4,8 @@ A modern real-time chat application built with MERN stack (MongoDB, Express.js, 
 
 ## Demo Account
 ```
-Email: test@talknet.com
-Password: talknet@123
+Email: test@test.com
+Password:  test@123
 ```
 
 ## Features
